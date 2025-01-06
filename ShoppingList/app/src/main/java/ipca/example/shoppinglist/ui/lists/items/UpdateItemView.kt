@@ -2,29 +2,33 @@ package ipca.example.shoppinglist.ui.lists.items
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import androidx.navigation.compose.rememberNavController
 import ipca.example.shoppinglist.ui.theme.ShoppingListTheme
 
 @Composable
-fun AddItemView(
+fun UpdateItemView(
     modifier: Modifier = Modifier,
     listId: String,
+    itemId: String,
     navController: NavController,
-    onItemAdded: () -> Unit
+    onItemUpdated: () -> Unit
 ) {
-    val viewModel: AddItemViewModel = viewModel()
+    val viewModel: UpdateItemViewModel = viewModel()
     val state = viewModel.state.value
+
+    LaunchedEffect(key1 = listId, key2 = itemId) {
+        viewModel.fetchItem(listId, itemId)
+    }
 
     Box(
         modifier = modifier.fillMaxSize(),
@@ -36,7 +40,7 @@ fun AddItemView(
                 .padding(16.dp)
         ) {
             Text(
-                text = "Add Item to List",
+                text = "Update Item",
                 style = MaterialTheme.typography.titleLarge,
                 modifier = Modifier.padding(bottom = 16.dp)
             )
@@ -79,31 +83,61 @@ fun AddItemView(
                 )
             }
 
-            Button(
-                onClick = {
-                    if (state.name.isNotBlank() && state.quantity.isNotBlank()) {
-                        viewModel.addItem(listId) {
-                            onItemAdded()
-                        }
-                    }
-                },
+            Row(
                 modifier = Modifier.fillMaxWidth(),
-                enabled = !state.isLoading
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                if (state.isLoading) {
-                    CircularProgressIndicator(
-                        color = Color.White,
+                // Save Changes Button
+                Button(
+                    onClick = {
+                        if (state.name.isNotBlank() && state.quantity.isNotBlank()) {
+                            viewModel.updateItem(listId, itemId) {
+                                onItemUpdated()
+                            }
+                        }
+                    },
+                    enabled = !state.isLoading,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    if (state.isLoading) {
+                        CircularProgressIndicator(
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Default.Save,
+                            contentDescription = "Save Item",
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Save Changes")
+                    }
+                }
+
+                Spacer(modifier = Modifier.width(16.dp))
+
+                // Delete Button
+                OutlinedButton(
+                    onClick = {
+                        // Optional: Add a confirmation dialog here
+                        viewModel.deleteItem(listId, itemId) {
+                            onItemUpdated()
+                        }
+                    },
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer,
+                        contentColor = MaterialTheme.colorScheme.onErrorContainer
+                    ),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = "Delete Item",
                         modifier = Modifier.size(24.dp)
                     )
-                } else {
-                    Icon(
-                        imageVector = Icons.Default.Add,
-                        contentDescription = "Add Item",
-                        tint = Color.White,
-                        modifier = Modifier.size(32.dp)
-                    )
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Add Item")
+                    Text("Delete Item")
                 }
             }
         }

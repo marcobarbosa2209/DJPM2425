@@ -69,7 +69,6 @@ dependencies {
     implementation ("androidx.compose.material3:material3:1.1.0")
     // Icons
     implementation ("androidx.compose.material:material-icons-extended:1.5.0")
-
 }
 
 android {

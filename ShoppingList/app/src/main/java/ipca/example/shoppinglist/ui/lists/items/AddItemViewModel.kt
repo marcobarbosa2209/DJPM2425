@@ -1,4 +1,4 @@
-package ipca.example.shoppinglist.ui.items
+package ipca.example.shoppinglist.ui.lists.items
 
 import android.util.Log
 import androidx.compose.runtime.mutableStateOf
@@ -21,6 +21,9 @@ class AddItemViewModel : ViewModel() {
     var state = mutableStateOf(AddItemState())
         private set
 
+    private val db = Firebase.firestore
+    private val auth = Firebase.auth
+
     fun onNameChange(name: String) {
         state.value = state.value.copy(name = name)
     }
@@ -34,10 +37,7 @@ class AddItemViewModel : ViewModel() {
     }
 
     fun addItem(listId: String, onSuccess: () -> Unit) {
-        val db = Firebase.firestore
-        val auth = Firebase.auth
         val currentUser = auth.currentUser
-
         val userEmail = currentUser?.email ?: run {
             state.value = state.value.copy(error = "User not authenticated.")
             return

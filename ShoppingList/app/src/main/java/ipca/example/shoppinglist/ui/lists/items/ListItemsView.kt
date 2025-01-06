@@ -1,9 +1,10 @@
-package ipca.example.shoppinglist.ui.items
+package ipca.example.shoppinglist.ui.lists.items
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -73,9 +74,21 @@ fun ListItemsView(
                                     }
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
-                                Column {
+                                Column(
+                                    modifier = Modifier.weight(1f)
+                                ) {
                                     Text(text = item.name, style = MaterialTheme.typography.bodyLarge)
                                     Text(text = "Quantity: ${item.quantity}", style = MaterialTheme.typography.bodyMedium)
+                                }
+                                IconButton(
+                                    onClick = {
+                                        navController.navigate(Screen.UpdateItem.createRoute(listId, item.docId))
+                                    }
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Edit,
+                                        contentDescription = "Edit Item"
+                                    )
                                 }
                             }
                         }

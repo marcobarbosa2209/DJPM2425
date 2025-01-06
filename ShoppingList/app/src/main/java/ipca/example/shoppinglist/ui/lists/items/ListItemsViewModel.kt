@@ -1,4 +1,4 @@
-package ipca.example.shoppinglist.ui.items
+package ipca.example.shoppinglist.ui.lists.items
 
 import android.util.Log
 import androidx.compose.runtime.mutableStateOf
@@ -15,10 +15,10 @@ data class ListItemsState(
 )
 
 data class Item(
-    val docId: String,
-    val name: String,
-    val quantity: Int,
-    val bought: Boolean
+    val docId: String = "",
+    val name: String = "",
+    val quantity: Int = 1,
+    val bought: Boolean = false
 )
 
 class ListItemsViewModel : ViewModel() {
