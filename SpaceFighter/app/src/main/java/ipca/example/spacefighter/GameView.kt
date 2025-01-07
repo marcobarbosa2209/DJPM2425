@@ -1,66 +1,97 @@
 package ipca.example.spacefighter
 
 import android.content.Context
-import android.graphics.Canvas
-import android.graphics.Color
-import android.graphics.Paint
-import android.graphics.Rect
+import android.graphics.*
 import android.os.Handler
 import android.os.Looper
-import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.SurfaceHolder
 import android.view.SurfaceView
+import androidx.core.content.ContextCompat
+import androidx.core.graphics.drawable.DrawableCompat
+import java.util.Random
 
-class GameView : SurfaceView, Runnable {
+class GameView(context: Context, width: Int, height: Int) : SurfaceView(context), Runnable {
 
-    var playing = false
-    var gameThread : Thread? = null
-    lateinit var surfaceHolder : SurfaceHolder
-    lateinit var canvas : Canvas
+    private var playing = false
+    private var gameThread: Thread? = null
+    private val surfaceHolder: SurfaceHolder = holder
+    private var canvas: Canvas? = null
 
-    lateinit var paint :Paint
-    var stars = arrayListOf<Star>()
-    var enemies = arrayListOf<Enemy>()
-    lateinit var player : Player
-    lateinit var boom : Boom
-    lateinit var warrior : Warrior
+    private val paint: Paint = Paint()
+    private val stars = arrayListOf<Star>()
+    private val enemies = arrayListOf<Enemy>()
+    private lateinit var player: Player
+    private lateinit var boom: Boom
+    private lateinit var warrior: Warrior
 
-    var lives = 3
+    private var lives = 3
+    var score = 0
+    private var highScore = 0
 
-    var onGameOver : () -> Unit = {}
+    private val heartSize = 50
+    private val heartBitmap: Bitmap
 
-    private fun init(context: Context, width: Int, height: Int){
+    var onGameOver: (finalScore: Int) -> Unit = {}
 
-        surfaceHolder = holder
-        paint = Paint()
+    private var callGameOverOnce = false
 
-        for (i in 0..100){
+    private val generator = Random()
+
+    private var activePointers = 0
+    private val touchX = FloatArray(10) { -1f }
+    private val touchY = FloatArray(10) { -1f }
+
+    private val gameContext: Context = context
+
+    init {
+        heartBitmap = getHeartBitmap()
+        init(context, width, height)
+    }
+
+    private fun getHeartBitmap(): Bitmap {
+        val drawable = ContextCompat.getDrawable(gameContext, R.drawable.heart)
+        return if (drawable != null) {
+            val wrappedDrawable = DrawableCompat.wrap(drawable).mutate()
+            DrawableCompat.setTint(wrappedDrawable, Color.RED)
+            val bitmap = Bitmap.createBitmap(
+                heartSize,
+                heartSize,
+                Bitmap.Config.ARGB_8888
+            )
+            val canvas = Canvas(bitmap)
+            wrappedDrawable.setBounds(0, 0, heartSize, heartSize)
+            wrappedDrawable.draw(canvas)
+            bitmap
+        } else {
+            Bitmap.createBitmap(heartSize, heartSize, Bitmap.Config.ARGB_8888).apply {
+                eraseColor(Color.RED)
+            }
+        }
+    }
+
+    private fun init(context: Context, width: Int, height: Int) {
+        for (i in 0..100) {
             stars.add(Star(width, height))
         }
 
-        for (i in 0..2){
-            enemies.add(Enemy(context,width, height))
+        for (i in 0..2) {
+            enemies.add(Enemy(context, width, height))
         }
 
         player = Player(context, width, height)
         warrior = Warrior(context, width, height)
         boom = Boom(context, width, height)
 
+        highScore = readHighScore(context)
     }
 
-    constructor(context: Context?, width: Int, height: Int) : super(context) {
-        init(context!!, width, height)
-    }
-    constructor(context: Context?, attrs: AttributeSet?) : super(context, attrs){
-        init(context!!, 0, 0)
-    }
-    constructor(context: Context?, attrs: AttributeSet?, defStyleAttr: Int) : super(
-        context,
-        attrs,
-        defStyleAttr
-    ){
-        init(context!!, 0, 0)
+    override fun run() {
+        while (playing) {
+            update()
+            draw()
+            control()
+        }
     }
 
     fun resume() {
@@ -69,82 +100,79 @@ class GameView : SurfaceView, Runnable {
         gameThread?.start()
     }
 
-
-    override fun run() {
-        while (playing){
-            update()
-            draw()
-            control()
+    fun pause() {
+        playing = false
+        try {
+            gameThread?.join()
+        } catch (e: InterruptedException) {
+            e.printStackTrace()
         }
     }
 
-    fun update(){
-
+    private fun update() {
         boom.x = -300
         boom.y = -300
 
-        for (s in stars){
+        for (s in stars) {
             s.update(player.speed)
         }
-        for (e in enemies){
+        for (e in enemies) {
             e.update(player.speed)
             if (Rect.intersects(player.detectCollision, e.detectCollision)) {
-
-
                 boom.x = e.x
                 boom.y = e.y
-
                 e.x = -300
-
                 lives -= 1
-
-
             }
-
         }
+
         player.update()
         warrior.update()
+
+        score += 1
     }
 
-    fun draw(){
-        if (surfaceHolder.surface.isValid){
+    private fun draw() {
+        if (surfaceHolder.surface.isValid) {
             canvas = surfaceHolder.lockCanvas()
-
-            // design code here
-
-            canvas.drawColor(Color.BLACK)
-
+            canvas?.drawColor(Color.BLACK)
             paint.color = Color.YELLOW
-
             for (star in stars) {
                 paint.strokeWidth = star.starWidth.toFloat()
-                canvas.drawPoint(star.x.toFloat(), star.y.toFloat(), paint)
+                canvas?.drawPoint(star.x.toFloat(), star.y.toFloat(), paint)
             }
-
-            canvas.drawBitmap(player.bitmap, player.x.toFloat(), player.y.toFloat(), paint)
-
+            canvas?.drawBitmap(player.bitmap, player.x.toFloat(), player.y.toFloat(), paint)
             for (e in enemies) {
-                canvas.drawBitmap(e.bitmap, e.x.toFloat(), e.y.toFloat(), paint)
+                canvas?.drawBitmap(e.bitmap, e.x.toFloat(), e.y.toFloat(), paint)
             }
-            canvas.drawBitmap(boom.bitmap, boom.x.toFloat(), boom.y.toFloat(), paint)
-
-            canvas.drawBitmap(warrior.bitmap, warrior.x.toFloat(), warrior.y.toFloat(), paint)
-
+            canvas?.drawBitmap(boom.bitmap, boom.x.toFloat(), boom.y.toFloat(), paint)
+            canvas?.drawBitmap(warrior.bitmap, warrior.x.toFloat(), warrior.y.toFloat(), paint)
+            for (i in 0 until lives) {
+                canvas?.drawBitmap(
+                    heartBitmap,
+                    10f + i * (heartSize + 10),
+                    10f,
+                    paint
+                )
+            }
+            paint.color = Color.WHITE
             paint.textSize = 42f
-            canvas.drawText("Lives: $lives", 10f, 100f, paint)
-
+            canvas?.drawText("Score: $score", 10f, 100f, paint)
             surfaceHolder.unlockCanvasAndPost(canvas)
         }
     }
 
-    var callGameOverOnce = false
-    fun control(){
+    private fun control() {
         Thread.sleep(17)
-        if (lives == 0 ){
+        if (lives <= 0) {
             playing = false
             Handler(Looper.getMainLooper()).post {
                 if (!callGameOverOnce) {
-                    onGameOver()
+                    if (score > highScore) {
+                        highScore = score
+                        saveHighScore(gameContext, highScore)
+                    }
+                    onGameOver(score)
                     callGameOverOnce = true
                 }
                 gameThread?.join()
@@ -152,14 +180,8 @@ class GameView : SurfaceView, Runnable {
         }
     }
 
-    private var activePointers = 0
-
-    private val touchX = FloatArray(10) { -1f } // Store X coordinates of touch points (up to 10 fingers)
-    private val touchY = FloatArray(10) { -1f }
-
     override fun onTouchEvent(event: MotionEvent?): Boolean {
-
-        when(event?.action){
+        when (event?.action) {
             MotionEvent.ACTION_DOWN -> {
                 player.boosting = true
                 warrior.x = event.x.toInt()
@@ -174,34 +196,26 @@ class GameView : SurfaceView, Runnable {
             }
         }
 
-        activePointers = event?.pointerCount?:0
+        activePointers = event?.pointerCount ?: 0
 
-        // Process each touch point
         for (i in 0 until activePointers) {
-            val pointerId = event?.getPointerId(i)?:0
-            touchX[pointerId] = event?.getX(i)?:-1f
-            touchY[pointerId] = event?.getY(i)?:-1f
+            val pointerId = event?.getPointerId(i) ?: 0
+            touchX[pointerId] = event?.getX(i) ?: -1f
+            touchY[pointerId] = event?.getY(i) ?: -1f
         }
 
-        // Handle touch actions
         when (event?.actionMasked) {
             MotionEvent.ACTION_DOWN, MotionEvent.ACTION_POINTER_DOWN -> {
-                // A new finger touched the screen
-
-
             }
             MotionEvent.ACTION_MOVE -> {
-                // Handle movement of each finger
             }
             MotionEvent.ACTION_UP, MotionEvent.ACTION_POINTER_UP -> {
-                // A finger was lifted up
                 val pointerIndex = event.actionIndex
                 val pointerId = event.getPointerId(pointerIndex)
                 touchX[pointerId] = -1f
                 touchY[pointerId] = -1f
             }
             MotionEvent.ACTION_CANCEL -> {
-                // Reset all points on cancel
                 for (i in touchX.indices) {
                     touchX[i] = -1f
                     touchY[i] = -1f
@@ -209,8 +223,32 @@ class GameView : SurfaceView, Runnable {
             }
         }
 
-
         return true
     }
 
+    private fun readHighScore(context: Context): Int {
+        return try {
+            val fis = context.openFileInput("highscore.txt")
+            val inputStreamReader = java.io.InputStreamReader(fis)
+            val bufferedReader = java.io.BufferedReader(inputStreamReader)
+            val line = bufferedReader.readLine()
+            bufferedReader.close()
+            inputStreamReader.close()
+            fis.close()
+            line.toIntOrNull() ?: 0
+        } catch (e: Exception) {
+            e.printStackTrace()
+            0
+        }
+    }
+
+    private fun saveHighScore(context: Context, score: Int) {
+        try {
+            val fos = context.openFileOutput("highscore.txt", Context.MODE_PRIVATE)
+            fos.write(score.toString().toByteArray())
+            fos.close()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
 }

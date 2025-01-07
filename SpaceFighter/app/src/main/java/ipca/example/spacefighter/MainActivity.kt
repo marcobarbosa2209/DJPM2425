@@ -7,13 +7,11 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.core.view.WindowCompat
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -29,23 +27,45 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             val navController = rememberNavController()
+            val highScoreViewModel: HighScoreViewModel = viewModel()
+
+            highScoreViewModel.loadHighScore(this)
+
             SpaceFighterTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { _ ->
+                Scaffold(modifier = androidx.compose.ui.Modifier.fillMaxSize()) { _ ->
                     NavHost(navController = navController,
-                        startDestination = "game_start"){
-                        composable("game_start"){
-                            GameHomeView(onPlayClick = {
-                                navController.navigate("game_screen")
-                            })
+                        startDestination = "game_start") {
+                        composable("game_start") {
+                            val currentHighScore by highScoreViewModel.highScore.collectAsState()
+                            GameHomeView(
+                                onPlayClick = {
+                                    navController.navigate("game_screen")
+                                },
+                                highScore = currentHighScore
+                            )
                         }
-                        composable("game_screen"){
-                            GameScreenView() {
+                        composable("game_screen") {
+                            GameScreenView() { finalScore ->
+                                // Update ViewModel with final score
+                                highScoreViewModel.setScore(finalScore)
+                                // Update high score if necessary
+                                if (finalScore > highScoreViewModel.highScore.value) {
+                                    // Use Activity context to pass to ViewModel
+                                    highScoreViewModel.updateHighScore(this@MainActivity, finalScore)
+                                }
                                 navController.navigate("game_over")
                             }
-
                         }
-                        composable("game_over"){
-                            GameOverView()
+                        composable("game_over") {
+                            val finalScore by highScoreViewModel.score.collectAsState()
+                            val currentHighScore by highScoreViewModel.highScore.collectAsState()
+                            GameOverView(
+                                finalScore = finalScore,
+                                highScore = currentHighScore,
+                                onResumeClick = {
+                                    navController.popBackStack("game_start", inclusive = false)
+                                }
+                            )
                         }
                     }
                 }
@@ -53,4 +73,3 @@ class MainActivity : ComponentActivity() {
         }
     }
 }
-

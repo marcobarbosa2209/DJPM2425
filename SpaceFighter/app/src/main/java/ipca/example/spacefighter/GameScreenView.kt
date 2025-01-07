@@ -3,17 +3,13 @@ package ipca.example.spacefighter
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import androidx.lifecycle.lifecycleScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 
 @Composable
-fun GameScreenView (
-    onGameOver : () -> Unit = {}
+fun GameScreenView(
+    onGameOver: (finalScore: Int) -> Unit = {}
 ) {
-
     val configuration = LocalConfiguration.current
     val screenWidth = configuration.screenWidthDp
     val screenHeight = configuration.screenHeightDp
@@ -24,16 +20,12 @@ fun GameScreenView (
 
     val lifecycleOwner = LocalLifecycleOwner.current
 
-
     AndroidView(factory = { context ->
-            GameView(context = context,
-                width = screenWidthPx.toInt(),
-                height = screenHeightPx.toInt() )
+        GameView(context, screenWidthPx.toInt(), screenHeightPx.toInt())
+    }, update = { gameView ->
+        gameView.onGameOver = { finalScore ->
+            onGameOver(finalScore)
         }
-    ) {
-        it.resume()
-        it.onGameOver = {
-            onGameOver()
-        }
-    }
+        gameView.resume()
+    })
 }

@@ -27,9 +27,3 @@ fun ArticleDetail(modifier: Modifier, url: String) {
             })
     }
 }
-
-@Preview
-@Composable
-fun ArticleDetailPreview() {
-    ArticleDetail(modifier = Modifier, url = "https://www.google.com")
-}
